@@ -66,7 +66,7 @@ func (p *Publisher) publishHeartbeat() {
 		return
 	}
 
-	subject := fmt.Sprintf("device.%s.online", p.info.ID().String())
+	subject := fmt.Sprintf("device.%s.health", p.info.ID().String())
 
 	msg := nats.NewMsg(subject)
 	msg.Header.Set("x-device-id", p.info.ID().String())

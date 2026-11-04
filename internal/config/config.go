@@ -11,7 +11,7 @@ type Config struct {
 func New() Config {
 	return Config{
 		NATS: NATS{
-			URL: "ntas://localhost:4222",
+			URL: "nats://localhost:4222",
 		},
 	}
 }
