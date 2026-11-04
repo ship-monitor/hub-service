@@ -68,8 +68,12 @@ func (p *Publisher) publishHeartbeat() {
 
 	subject := fmt.Sprintf("device.%s.online", p.info.ID().String())
 
+	msg := nats.NewMsg(subject)
+	msg.Header.Set("x-device-id", p.info.ID().String())
+	msg.Data = data
+
 	p.logger.Info("Sending heartbeat", "sbject", subject, "heartbeat", string(data))
-	err = p.nats.Publish(subject, data)
+	err = p.nats.PublishMsg(msg)
 	if err != nil {
 		p.logger.Error("Publish message", "error", err.Error())
 	}
