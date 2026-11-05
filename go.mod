@@ -5,6 +5,7 @@ go 1.27.0
 require (
 	github.com/google/uuid v1.6.0
 	github.com/nats-io/nats.go v1.55.0
+	github.com/ship-monitor/cloud v0.3.1-0.20261105112335-fa8fa5b18dea
 	go.uber.org/fx v1.24.0
 )
 
@@ -17,7 +18,6 @@ require (
 	github.com/leodido/go-urn v1.4.0 // indirect
 	github.com/nats-io/nkeys v0.4.16 // indirect
 	github.com/nats-io/nuid v1.0.1 // indirect
-	github.com/ship-monitor/cloud v0.3.1-0.20261105112335-fa8fa5b18dea // indirect
 	go.uber.org/dig v1.19.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.28.0 // indirect
