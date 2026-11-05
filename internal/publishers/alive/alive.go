@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/nats-io/nats.go"
+	"github.com/ship-monitor/cloud/pkg/connector/schemas/messages"
 )
 
 type DeviceInfoService interface {
@@ -19,6 +20,8 @@ type Publisher struct {
 	logger *slog.Logger
 	info   DeviceInfoService
 	stop   chan struct{}
+
+	subject string
 }
 
 func New(
@@ -27,10 +30,11 @@ func New(
 	info DeviceInfoService,
 ) *Publisher {
 	return &Publisher{
-		nats:   nats,
-		logger: logger,
-		info:   info,
-		stop:   make(chan struct{}),
+		nats:    nats,
+		logger:  logger,
+		info:    info,
+		stop:    make(chan struct{}),
+		subject: fmt.Sprintf("device.%s.health", info.ID().String()),
 	}
 }
 
@@ -58,21 +62,14 @@ func (p *Publisher) startPublishing() {
 }
 
 func (p *Publisher) publishHeartbeat() {
-	hb := NewHeartbeat()
+	hb := NewHeartbeat(p.info.ID())
 
-	data, err := json.Marshal(&hb)
+	msg, err := heartbeatToMsg(p.subject, hb)
 	if err != nil {
-		p.logger.Error("Marshall message", "error", err)
-		return
+		p.logger.Error("Convert heartbeat to message", "error", err.Error())
 	}
 
-	subject := fmt.Sprintf("device.%s.health", p.info.ID().String())
-
-	msg := nats.NewMsg(subject)
-	msg.Header.Set("x-device-id", p.info.ID().String())
-	msg.Data = data
-
-	p.logger.Info("Sending heartbeat", "sbject", subject, "heartbeat", string(data))
+	p.logger.Info("Sending heartbeat", "sbject", p.subject, "msg", msg)
 	err = p.nats.PublishMsg(msg)
 	if err != nil {
 		p.logger.Error("Publish message", "error", err.Error())
@@ -84,9 +81,32 @@ type Heartbeat struct {
 	Timestamp time.Time `json:"timestamp"`
 }
 
-func NewHeartbeat() Heartbeat {
-	return Heartbeat{
-		Type:      "heartbeat",
-		Timestamp: time.Now().UTC(),
+func NewHeartbeat(deviceID uuid.UUID) *messages.Heartbeat {
+	return &messages.Heartbeat{
+		Payload: messages.HeartbeatPayload{
+			Timestamp: time.Now().UTC().Unix(),
+		},
+		Headers: messages.HeartbeatHeaders{
+			IdentificationHeader: messages.IdentificationHeader{
+				DeviceID: deviceID,
+			},
+		},
 	}
+}
+
+const DeviceIDHeader = "device-id"
+
+func heartbeatToMsg(subj string, h *messages.Heartbeat) (*nats.Msg, error) {
+	msg := nats.NewMsg(subj)
+
+	body, err := json.Marshal(&h.Payload)
+	if err != nil {
+		return nil, fmt.Errorf("marshall json: %w", err)
+	}
+	msg.Data = body
+
+	msg.Header.Set(DeviceIDHeader, h.Headers.DeviceID.String())
+
+	return msg, nil
+
 }
