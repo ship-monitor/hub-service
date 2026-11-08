@@ -5,7 +5,7 @@ go 1.27.0
 require (
 	github.com/google/uuid v1.6.0
 	github.com/nats-io/nats.go v1.55.0
-	github.com/ship-monitor/cloud v0.3.1-0.20261105112335-fa8fa5b18dea
+	github.com/ship-monitor/cloud v1.0.4
 	go.uber.org/fx v1.24.0
 )
 

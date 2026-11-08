@@ -8,6 +8,7 @@ import (
 	"github.com/ship-monitor/hub-service/internal/config"
 	"github.com/ship-monitor/hub-service/internal/publishers/alive"
 	"github.com/ship-monitor/hub-service/internal/services/info"
+	"github.com/ship-monitor/hub-service/internal/subscribers/verify"
 	"go.uber.org/fx"
 )
 
@@ -19,8 +20,10 @@ func NewApp(config *config.Config) *fx.App {
 		fx.Provide(info.New),
 		fx.Provide(newNats),
 		fx.Provide(newAlivePub),
+		fx.Provide(newVerifySub),
 
 		fx.Invoke(func(*alive.Publisher) {}),
+		fx.Invoke(func(*verify.Subscriber) {}),
 	)
 }
 func newNats(lc fx.Lifecycle, config *config.Config) (*nats.Conn, error) {
@@ -32,7 +35,6 @@ func newNats(lc fx.Lifecycle, config *config.Config) (*nats.Conn, error) {
 	lc.Append(fx.StopHook(conn.Close))
 
 	return conn, nil
-
 }
 func newAlivePub(
 	lc fx.Lifecycle,
@@ -43,6 +45,17 @@ func newAlivePub(
 
 	return pub
 }
+
+func newVerifySub(
+	lc fx.Lifecycle,
+	conn *nats.Conn, logger *slog.Logger, info *info.Service) *verify.Subscriber {
+	sub := verify.New(conn, logger, info)
+
+	lc.Append(fx.StartStopHook(sub.Start, sub.Stop))
+
+	return sub
+}
+
 func newLogger() *slog.Logger {
 	return slog.Default()
 }
