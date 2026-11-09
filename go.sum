@@ -26,6 +26,10 @@ github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZb
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/ship-monitor/cloud v0.3.1-0.20261105112335-fa8fa5b18dea h1:UdSeZ4SryxjamwENKQ4AQ5RXwXV1EvF/kFaRkcDZSj4=
 github.com/ship-monitor/cloud v0.3.1-0.20261105112335-fa8fa5b18dea/go.mod h1:w90eqgJXSalLooex37pTadyYKwn1pWGUVJyCT8pH5nQ=
+github.com/ship-monitor/cloud v0.3.1-0.20261107150518-3ecb4099c160 h1:Bsyk5IHaUZf8uUhZh62zOHkOVZXJs1xlPf3Xriux6KY=
+github.com/ship-monitor/cloud v0.3.1-0.20261107150518-3ecb4099c160/go.mod h1:o9eu0w8uvY32+04xvimotVKE2uFrv3kzxaqGL0P7IRw=
+github.com/ship-monitor/cloud v1.0.4 h1:0gLL6w0leLEonSV95pe7xXXgdbQmsbLxHuOhCqu/Oh0=
+github.com/ship-monitor/cloud v1.0.4/go.mod h1:o9eu0w8uvY32+04xvimotVKE2uFrv3kzxaqGL0P7IRw=
 github.com/stretchr/testify v1.8.4 h1:CcVxjf3Q8PM0mHUKJCdn+eZZtm5yQwehR5yeSVQQcUk=
 github.com/stretchr/testify v1.8.4/go.mod h1:sz/lmYIOXD/1dqDmKjjqLyZ2RngseejIcXlSw2iwfAo=
 go.uber.org/dig v1.19.0 h1:BACLhebsYdpQ7IROQ1AGPjrXcP5dF80U3gKoFzbaq/4=

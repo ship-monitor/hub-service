@@ -11,6 +11,9 @@ import (
 	"github.com/ship-monitor/cloud/pkg/connector/schemas/messages"
 )
 
+// PubTimeout represents timeout between sending heartbeats.
+const PubTimeout = time.Second * 20
+
 type DeviceInfoService interface {
 	ID() uuid.UUID
 }
@@ -47,7 +50,7 @@ func (p *Publisher) Stop() {
 }
 
 func (p *Publisher) startPublishing() {
-	ticker := time.NewTicker(2 * time.Second)
+	ticker := time.NewTicker(PubTimeout)
 	defer ticker.Stop()
 
 	for {
@@ -56,6 +59,7 @@ func (p *Publisher) startPublishing() {
 			p.publishHeartbeat()
 		case <-p.stop:
 			p.logger.Info("Receive stop")
+
 			return
 		}
 	}
@@ -69,16 +73,12 @@ func (p *Publisher) publishHeartbeat() {
 		p.logger.Error("Convert heartbeat to message", "error", err.Error())
 	}
 
-	p.logger.Info("Sending heartbeat", "sbject", p.subject, "msg", msg)
+	p.logger.Info("Sending heartbeat", "sbject", p.subject)
+
 	err = p.nats.PublishMsg(msg)
 	if err != nil {
 		p.logger.Error("Publish message", "error", err.Error())
 	}
-}
-
-type Heartbeat struct {
-	Type      string    `json:"type"`
-	Timestamp time.Time `json:"timestamp"`
 }
 
 func NewHeartbeat(deviceID uuid.UUID) *messages.Heartbeat {
@@ -103,10 +103,10 @@ func heartbeatToMsg(subj string, h *messages.Heartbeat) (*nats.Msg, error) {
 	if err != nil {
 		return nil, fmt.Errorf("marshall json: %w", err)
 	}
+
 	msg.Data = body
 
 	msg.Header.Set(DeviceIDHeader, h.Headers.DeviceID.String())
 
 	return msg, nil
-
 }
