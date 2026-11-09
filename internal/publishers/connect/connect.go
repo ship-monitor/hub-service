@@ -1,47 +1,44 @@
 package connect
 
 import (
-	"encoding/json"
+	"context"
 	"fmt"
 	"log/slog"
 
-	"github.com/nats-io/nats.go"
-	"github.com/ship-monitor/cloud/pkg/connector/channels"
-	"github.com/ship-monitor/cloud/pkg/connector/schemas/messages"
+	"github.com/google/uuid"
+	"github.com/ship-monitor/cloud/pkg/connector/asyncapi"
 )
 
+type Info interface {
+	ID() uuid.UUID
+}
+
 type P struct {
-	logger *slog.Logger
-	conn   *nats.Conn
+	logger     *slog.Logger
+	controller *asyncapi.UserController
+	info       Info
 }
 
 func New(
 	logger *slog.Logger,
-	conn *nats.Conn,
+	controller *asyncapi.UserController,
+	info Info,
 ) *P {
 	return &P{
-		logger: logger,
-		conn:   conn,
+		logger:     logger,
+		controller: controller,
+		info:       info,
 	}
 }
 
-const DeviceIDHeader = "device-id"
-
-func (p *P) PublishConnectResponse(response *messages.ConnectResponse) error {
-	msg := nats.NewMsg(channels.ConnectResponseChannel(response.Header.DeviceID))
-
-	data, err := json.Marshal(response.Payload)
+func (p *P) PublishConnectResponse(ctx context.Context, response *asyncapi.ConnectResponseMessage) error {
+	err := p.controller.SendToOnConnectResponseOperation(
+		ctx,
+		asyncapi.ConnectResponsesChannelParameters{DeviceId: p.info.ID().String()},
+		*response,
+	)
 	if err != nil {
-		return fmt.Errorf("marshal payload: %w", err)
-	}
-
-	msg.Data = data
-
-	msg.Header.Add(DeviceIDHeader, response.Header.DeviceID.String())
-
-	err = p.conn.PublishMsg(msg)
-	if err != nil {
-		return fmt.Errorf("publish message: %w", err)
+		return fmt.Errorf("send response: %w", err)
 	}
 
 	return nil

@@ -1,13 +1,12 @@
 package subscriber
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 
 	"github.com/google/uuid"
-	"github.com/nats-io/nats.go"
-	"github.com/ship-monitor/cloud/pkg/connector/channels"
-	"github.com/ship-monitor/cloud/pkg/connector/schemas/messages"
+	"github.com/ship-monitor/cloud/pkg/connector/asyncapi"
 	"github.com/ship-monitor/hub-service/internal/publishers/connect"
 )
 
@@ -16,57 +15,61 @@ type Info interface {
 }
 
 type S struct {
-	conn   *nats.Conn
-	info   Info
-	logger *slog.Logger
-	pub    *connect.P
+	controller *asyncapi.UserController
+	info       Info
+	logger     *slog.Logger
+	pub        *connect.P
+
+	cancel context.CancelFunc
 }
 
 func New(
-	conn *nats.Conn,
+	controller *asyncapi.UserController,
 	info Info,
 	logger *slog.Logger,
 	pub *connect.P,
 ) *S {
 	return &S{
-		conn:   conn,
-		info:   info,
-		logger: logger,
-		pub:    pub,
+		controller: controller,
+		info:       info,
+		logger:     logger.WithGroup("Subscriber"),
+		pub:        pub,
+		cancel:     nil,
 	}
 }
-
-func (s *S) Start() error {
-	_, err := s.conn.Subscribe(channels.ConnectRequestChannel(s.info.ID()), s.HandleConnectRequest)
+func (s *S) Start(ctx context.Context) error {
+	err := s.controller.SubscribeToPublishConnectRequestOperation(
+		ctx,
+		asyncapi.ConnectRequestsChannelParameters{DeviceId: s.info.ID().String()},
+		s.HandleConnectRequest,
+	)
 	if err != nil {
 		return fmt.Errorf("subscribe: %w", err)
 	}
 
 	return nil
 }
+func (s *S) Stop() {
+	s.cancel()
+}
 
-func (s *S) HandleConnectRequest(msg *nats.Msg) {
-	request, err := messages.UnmarshalConnectRequest(msg)
-	if err != nil {
-		s.logger.Error("Unmarshal request", slog.String("error", err.Error()))
+func (s *S) HandleConnectRequest(ctx context.Context, message asyncapi.ConnectRequestMessage) error {
+	s.logger.Info("Connect request received", "requestId", message.Payload.RequestId)
 
-		return
-	}
-
-	s.logger.Info("Connect request received", "requestId", request.RequestID)
-
-	err = s.pub.PublishConnectResponse(&messages.ConnectResponse{
-		Payload: messages.ConnectResponsePayload{
+	err := s.pub.PublishConnectResponse(ctx, &asyncapi.ConnectResponseMessage{
+		Payload: asyncapi.ConnectResponseSchema{
 			Approve:   true,
-			RequestID: request.RequestID,
+			RequestId: message.Payload.RequestId,
 		},
-		Header: messages.ConnectResponseHeader{
-			IdentificationHeader: messages.IdentificationHeader{
-				DeviceID: s.info.ID(),
-			},
+		Headers: asyncapi.IdentificationHeadersSchema{
+			Authorization: s.info.ID().String(),
 		},
 	})
 	if err != nil {
 		s.logger.Error("Publish connect response", "error", err.Error())
+
+		return fmt.Errorf("publish connect response: %w", err)
 	}
+
+	return nil
 }

@@ -1,43 +1,38 @@
 package alive
 
 import (
-	"encoding/json"
-	"fmt"
-	"log/slog"
+	"context"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/nats-io/nats.go"
-	"github.com/ship-monitor/cloud/pkg/connector/schemas/messages"
+	"github.com/ship-monitor/cloud/pkg/connector/asyncapi"
+	"go.uber.org/zap"
 )
 
 // PubTimeout represents timeout between sending heartbeats.
 const PubTimeout = time.Second * 20
 
-type DeviceInfoService interface {
+type Info interface {
 	ID() uuid.UUID
 }
 
 type Publisher struct {
-	nats   *nats.Conn
-	logger *slog.Logger
-	info   DeviceInfoService
-	stop   chan struct{}
-
-	subject string
+	controller *asyncapi.UserController
+	logger     *zap.Logger
+	info       Info
+	stop       chan struct{}
 }
 
 func New(
-	nats *nats.Conn,
-	logger *slog.Logger,
-	info DeviceInfoService,
+	controller *asyncapi.UserController,
+	logger *zap.Logger,
+	info Info,
 ) *Publisher {
 	return &Publisher{
-		nats:    nats,
-		logger:  logger,
-		info:    info,
-		stop:    make(chan struct{}),
-		subject: fmt.Sprintf("device.%s.health", info.ID().String()),
+		controller: controller,
+		logger:     logger,
+		info:       info,
+		stop:       make(chan struct{}),
 	}
 }
 
@@ -68,45 +63,29 @@ func (p *Publisher) startPublishing() {
 func (p *Publisher) publishHeartbeat() {
 	hb := NewHeartbeat(p.info.ID())
 
-	msg, err := heartbeatToMsg(p.subject, hb)
+	err := p.controller.SendToOnDeviceHeartbeatOperation(
+		context.TODO(),
+		asyncapi.DevicesAliveChannelParameters{DeviceId: p.info.ID().String()},
+		*hb,
+	)
 	if err != nil {
-		p.logger.Error("Convert heartbeat to message", "error", err.Error())
+		p.logger.Error("Publish heartbeat", zap.Error(err))
+
+		return
 	}
 
-	p.logger.Info("Sending heartbeat", "sbject", p.subject)
-
-	err = p.nats.PublishMsg(msg)
-	if err != nil {
-		p.logger.Error("Publish message", "error", err.Error())
-	}
+	p.logger.Info("Published heartbeat")
 }
 
-func NewHeartbeat(deviceID uuid.UUID) *messages.Heartbeat {
-	return &messages.Heartbeat{
-		Payload: messages.HeartbeatPayload{
-			Timestamp: time.Now().UTC().Unix(),
+func NewHeartbeat(deviceID uuid.UUID) *asyncapi.HeartbeatMessage {
+	timestamp := time.Now().Unix()
+
+	return &asyncapi.HeartbeatMessage{
+		Payload: asyncapi.HeartbeatSchema{
+			Timestamp: timestamp,
 		},
-		Headers: messages.HeartbeatHeaders{
-			IdentificationHeader: messages.IdentificationHeader{
-				DeviceID: deviceID,
-			},
+		Headers: asyncapi.IdentificationHeadersSchema{
+			Authorization: deviceID.String(),
 		},
 	}
-}
-
-const DeviceIDHeader = "device-id"
-
-func heartbeatToMsg(subj string, h *messages.Heartbeat) (*nats.Msg, error) {
-	msg := nats.NewMsg(subj)
-
-	body, err := json.Marshal(&h.Payload)
-	if err != nil {
-		return nil, fmt.Errorf("marshall json: %w", err)
-	}
-
-	msg.Data = body
-
-	msg.Header.Set(DeviceIDHeader, h.Headers.DeviceID.String())
-
-	return msg, nil
 }

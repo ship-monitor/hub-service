@@ -5,3 +5,6 @@ linters:
     - revive
     - depguard
     - varnamelen
+    - exhaustruct
+    - wsl
+    - gomodguard
