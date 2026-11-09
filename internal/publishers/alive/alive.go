@@ -1,14 +1,17 @@
 package alive
 
 import (
-	"encoding/json"
+	"context"
 	"fmt"
 	"log/slog"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/nats-io/nats.go"
-	"github.com/ship-monitor/cloud/pkg/connector/schemas/messages"
+	"github.com/ship-monitor/cloud/pkg/connector/channels"
+	"github.com/ship-monitor/cloud/pkg/connector/messages"
+	"github.com/ship-monitor/cloud/pkg/connector/parameters"
+	"github.com/ship-monitor/cloud/pkg/connector/schemas"
+	"github.com/ship-monitor/cloud/pkg/connector/servers"
 )
 
 // PubTimeout represents timeout between sending heartbeats.
@@ -19,34 +22,46 @@ type DeviceInfoService interface {
 }
 
 type Publisher struct {
-	nats   *nats.Conn
-	logger *slog.Logger
-	info   DeviceInfoService
-	stop   chan struct{}
-
-	subject string
+	channel *channels.DevicesAliveNats
+	logger  *slog.Logger
+	info    DeviceInfoService
+	stop    chan struct{}
 }
 
 func New(
-	nats *nats.Conn,
+	server servers.Development,
 	logger *slog.Logger,
 	info DeviceInfoService,
-) *Publisher {
+) (*Publisher, error) {
+	channel, err := server.OpenDevicesAliveNats(
+		context.Background(),
+		channels.DevicesAliveParameters{
+			DeviceID: parameters.DeviceID(info.ID().String()),
+		},
+		nil,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("open devices alive channel: %w", err)
+	}
+
 	return &Publisher{
-		nats:    nats,
+		channel: channel,
 		logger:  logger,
 		info:    info,
 		stop:    make(chan struct{}),
-		subject: fmt.Sprintf("device.%s.health", info.ID().String()),
-	}
+	}, nil
 }
 
-func (p *Publisher) Start() {
+func (p *Publisher) Start() error {
 	go p.startPublishing()
+
+	return nil
 }
 
-func (p *Publisher) Stop() {
-	p.stop <- struct{}{}
+func (p *Publisher) Stop() error {
+	close(p.stop)
+
+	return p.channel.Close()
 }
 
 func (p *Publisher) startPublishing() {
@@ -66,47 +81,17 @@ func (p *Publisher) startPublishing() {
 }
 
 func (p *Publisher) publishHeartbeat() {
-	hb := NewHeartbeat(p.info.ID())
+	timestamp := time.Now().UTC().Unix()
+	deviceID := p.info.ID()
 
-	msg, err := heartbeatToMsg(p.subject, hb)
+	message := (&messages.HeartbeatOut{}).
+		SetPayload(schemas.Heartbeat{Timestamp: &timestamp}).
+		SetHeaders(schemas.IdentificationHeaders{DeviceID: &deviceID})
+
+	p.logger.Info("Sending heartbeat", "subject", p.channel.Subject())
+
+	err := p.channel.PublishHeartbeat(context.Background(), message)
 	if err != nil {
-		p.logger.Error("Convert heartbeat to message", "error", err.Error())
+		p.logger.Error("Publish heartbeat", "error", err.Error())
 	}
-
-	p.logger.Info("Sending heartbeat", "sbject", p.subject)
-
-	err = p.nats.PublishMsg(msg)
-	if err != nil {
-		p.logger.Error("Publish message", "error", err.Error())
-	}
-}
-
-func NewHeartbeat(deviceID uuid.UUID) *messages.Heartbeat {
-	return &messages.Heartbeat{
-		Payload: messages.HeartbeatPayload{
-			Timestamp: time.Now().UTC().Unix(),
-		},
-		Headers: messages.HeartbeatHeaders{
-			IdentificationHeader: messages.IdentificationHeader{
-				DeviceID: deviceID,
-			},
-		},
-	}
-}
-
-const DeviceIDHeader = "device-id"
-
-func heartbeatToMsg(subj string, h *messages.Heartbeat) (*nats.Msg, error) {
-	msg := nats.NewMsg(subj)
-
-	body, err := json.Marshal(&h.Payload)
-	if err != nil {
-		return nil, fmt.Errorf("marshall json: %w", err)
-	}
-
-	msg.Data = body
-
-	msg.Header.Set(DeviceIDHeader, h.Headers.DeviceID.String())
-
-	return msg, nil
 }

@@ -1,17 +1,26 @@
 package info
 
-import "github.com/google/uuid"
+import (
+	"github.com/google/uuid"
+	"github.com/ship-monitor/hub-service/internal/config"
+)
 
 type Service struct {
-	id uuid.UUID
+	id          uuid.UUID
+	securityKey string
 }
 
-func New() *Service {
+func New(config *config.Config) *Service {
 	return &Service{
-		id: uuid.MustParse("3dea52fe-4fa8-43cf-9ea1-d54c7b74d467"),
+		id:          config.DeviceID,
+		securityKey: config.SecurityKey,
 	}
 }
 
 func (s *Service) ID() uuid.UUID {
 	return s.id
+}
+
+func (s *Service) SecurityKey() string {
+	return s.securityKey
 }

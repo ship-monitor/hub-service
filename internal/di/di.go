@@ -1,13 +1,13 @@
 package di
 
 import (
-	"fmt"
+	"context"
 	"log/slog"
+	"net/url"
 
-	"github.com/nats-io/nats.go"
+	"github.com/ship-monitor/cloud/pkg/connector/servers"
 	"github.com/ship-monitor/hub-service/internal/config"
 	"github.com/ship-monitor/hub-service/internal/publishers/alive"
-	"github.com/ship-monitor/hub-service/internal/publishers/connect"
 	"github.com/ship-monitor/hub-service/internal/services/info"
 	"github.com/ship-monitor/hub-service/internal/subscriber"
 	"go.uber.org/fx"
@@ -19,58 +19,70 @@ func NewApp(config *config.Config) *fx.App {
 		fx.Provide(newLogger),
 
 		fx.Provide(info.New),
-		fx.Provide(newNats),
+		fx.Provide(newServer),
 		fx.Provide(newAlivePub),
-		fx.Provide(newConnectPub),
 		fx.Provide(newSub),
 
 		fx.Invoke(func(*alive.Publisher) {}),
 		fx.Invoke(func(*subscriber.S) {}),
 	)
 }
-func newNats(lc fx.Lifecycle, config *config.Config) (*nats.Conn, error) {
-	conn, err := nats.Connect(config.NATS.URL)
-	if err != nil {
-		return nil, fmt.Errorf("connect to nats: %w", err)
-	}
 
-	lc.Append(fx.StopHook(conn.Close))
-
-	return conn, nil
-}
-func newAlivePub(
-	lc fx.Lifecycle,
-	conn *nats.Conn,
-	logger *slog.Logger,
-	info *info.Service,
-) *alive.Publisher {
-	pub := alive.New(conn, logger, info)
-
-	lc.Append(fx.StartStopHook(pub.Start, pub.Stop))
-
-	return pub
-}
-func newConnectPub(
-	logger *slog.Logger,
-	conn *nats.Conn,
-	info *info.Service,
-) *connect.P {
-	return connect.New(logger, conn)
-}
 func newLogger() *slog.Logger {
 	return slog.Default()
 }
 
+func newServer(lc fx.Lifecycle, config *config.Config) (servers.Development, error) {
+	serverURL, err := url.Parse(config.NATS.URL)
+	if err != nil {
+		return servers.Development{}, err
+	}
+
+	conn, err := servers.ConnectDevelopmentBidi(nil, serverURL)
+	if err != nil {
+		return servers.Development{}, err
+	}
+
+	lc.Append(fx.StopHook(conn.Close))
+
+	return conn.Development, nil
+}
+
+func newAlivePub(
+	lc fx.Lifecycle,
+	server servers.Development,
+	logger *slog.Logger,
+	info *info.Service,
+) (*alive.Publisher, error) {
+	pub, err := alive.New(server, logger, info)
+	if err != nil {
+		return nil, err
+	}
+
+	lc.Append(fx.StartStopHook(pub.Start, pub.Stop))
+
+	return pub, nil
+}
+
 func newSub(
 	lc fx.Lifecycle,
-	conn *nats.Conn,
-	info *info.Service,
+	server servers.Development,
 	logger *slog.Logger,
-	pub *connect.P,
-) *subscriber.S {
-	s := subscriber.New(conn, info, logger, pub)
+	info *info.Service,
+) (*subscriber.S, error) {
+	sub, err := subscriber.New(server, logger, info)
+	if err != nil {
+		return nil, err
+	}
 
-	lc.Append(fx.StartHook(s.Start))
+	lc.Append(fx.Hook{
+		OnStart: func(ctx context.Context) error {
+			return sub.Start(ctx)
+		},
+		OnStop: func(_ context.Context) error {
+			return sub.Stop()
+		},
+	})
 
-	return s
+	return sub, nil
 }
