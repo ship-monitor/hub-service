@@ -10,6 +10,7 @@ import (
 	"github.com/ship-monitor/hub-service/internal/config"
 	"github.com/ship-monitor/hub-service/internal/publishers/alive"
 	"github.com/ship-monitor/hub-service/internal/publishers/connect"
+	"github.com/ship-monitor/hub-service/internal/publishers/sensors"
 	"github.com/ship-monitor/hub-service/internal/services/info"
 	"github.com/ship-monitor/hub-service/internal/subscriber"
 	"go.uber.org/fx"
@@ -25,12 +26,14 @@ func NewApp(config *config.Config) *fx.App {
 		fx.Provide(info.New),
 		fx.Provide(newAlivePub),
 		fx.Provide(newConnectPub),
+		fx.Provide(newSensorsPub),
 		fx.Provide(newSub),
 
 		fx.Provide(newConnectorController),
 
 		fx.Invoke(func(*subscriber.S) {}),
 		fx.Invoke(func(*alive.Publisher) {}),
+		fx.Invoke(func(*sensors.Publisher) {}),
 	)
 }
 func newAlivePub(
@@ -51,6 +54,19 @@ func newConnectPub(
 	info *info.Service,
 ) (*connect.P, error) {
 	return connect.New(logger, conn, info), nil
+}
+func newSensorsPub(
+	lc fx.Lifecycle,
+	conn *asyncapi.UserController,
+	logger *slog.Logger,
+	info *info.Service,
+	config *config.Config,
+) (*sensors.Publisher, error) {
+	pub := sensors.New(conn, logger, info, config.SensorID, config.SensorName)
+
+	lc.Append(fx.StartStopHook(pub.Start, pub.Stop))
+
+	return pub, nil
 }
 func newLogger() *slog.Logger {
 	return slog.Default()

@@ -54,12 +54,12 @@ func (s *S) Stop() {
 }
 
 func (s *S) HandleConnectRequest(ctx context.Context, message asyncapi.ConnectRequestMessage) error {
-	s.logger.Info("Connect request received", "requestId", message.Payload.RequestId)
+	s.logger.Info("Connect request received", "RequestID", message.Payload.RequestID)
 
 	err := s.pub.PublishConnectResponse(ctx, &asyncapi.ConnectResponseMessage{
 		Payload: asyncapi.ConnectResponseSchema{
 			Approve:   true,
-			RequestId: message.Payload.RequestId,
+			RequestID: message.Payload.RequestID,
 		},
 		Headers: asyncapi.IdentificationHeadersSchema{
 			Authorization: s.info.ID().String(),
