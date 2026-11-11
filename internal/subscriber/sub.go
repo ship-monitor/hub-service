@@ -3,11 +3,11 @@ package subscriber
 import (
 	"context"
 	"fmt"
-	"log/slog"
 
 	"github.com/google/uuid"
 	"github.com/ship-monitor/cloud/pkg/connector/asyncapi"
 	"github.com/ship-monitor/hub-service/internal/publishers/connect"
+	"go.uber.org/zap"
 )
 
 type Info interface {
@@ -17,7 +17,7 @@ type Info interface {
 type S struct {
 	controller *asyncapi.UserController
 	info       Info
-	logger     *slog.Logger
+	logger     *zap.Logger
 	pub        *connect.P
 
 	cancel context.CancelFunc
@@ -26,13 +26,13 @@ type S struct {
 func New(
 	controller *asyncapi.UserController,
 	info Info,
-	logger *slog.Logger,
+	logger *zap.Logger,
 	pub *connect.P,
 ) *S {
 	return &S{
 		controller: controller,
 		info:       info,
-		logger:     logger.WithGroup("Subscriber"),
+		logger:     logger.Named("Subscriber"),
 		pub:        pub,
 		cancel:     nil,
 	}
@@ -54,7 +54,7 @@ func (s *S) Stop() {
 }
 
 func (s *S) HandleConnectRequest(ctx context.Context, message asyncapi.ConnectRequestMessage) error {
-	s.logger.Info("Connect request received", "RequestID", message.Payload.RequestID)
+	s.logger.Info("Connect request received", zap.String("requestID", message.Payload.RequestID.String()))
 
 	err := s.pub.PublishConnectResponse(ctx, &asyncapi.ConnectResponseMessage{
 		Payload: asyncapi.ConnectResponseSchema{
@@ -66,7 +66,7 @@ func (s *S) HandleConnectRequest(ctx context.Context, message asyncapi.ConnectRe
 		},
 	})
 	if err != nil {
-		s.logger.Error("Publish connect response", "error", err.Error())
+		s.logger.Error("Publish connect response", zap.Error(err))
 
 		return fmt.Errorf("publish connect response: %w", err)
 	}

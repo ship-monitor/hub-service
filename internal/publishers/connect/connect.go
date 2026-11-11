@@ -3,10 +3,10 @@ package connect
 import (
 	"context"
 	"fmt"
-	"log/slog"
 
 	"github.com/google/uuid"
 	"github.com/ship-monitor/cloud/pkg/connector/asyncapi"
+	"go.uber.org/zap"
 )
 
 type Info interface {
@@ -14,13 +14,13 @@ type Info interface {
 }
 
 type P struct {
-	logger     *slog.Logger
+	logger     *zap.Logger
 	controller *asyncapi.UserController
 	info       Info
 }
 
 func New(
-	logger *slog.Logger,
+	logger *zap.Logger,
 	controller *asyncapi.UserController,
 	info Info,
 ) *P {
@@ -40,6 +40,8 @@ func (p *P) PublishConnectResponse(ctx context.Context, response *asyncapi.Conne
 	if err != nil {
 		return fmt.Errorf("send response: %w", err)
 	}
+
+	p.logger.Info("Connect response published")
 
 	return nil
 }

@@ -3,13 +3,13 @@ package sensors
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"math"
 	"math/rand"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/ship-monitor/cloud/pkg/connector/asyncapi"
+	"go.uber.org/zap"
 )
 
 // SendTimeout represents timeout between sending metrics.
@@ -21,7 +21,7 @@ type DeviceInfoService interface {
 
 type Publisher struct {
 	controller *asyncapi.UserController
-	logger     *slog.Logger
+	logger     *zap.Logger
 	info       DeviceInfoService
 	sensorID   asyncapi.SensorID
 	sensorName string
@@ -30,7 +30,7 @@ type Publisher struct {
 
 func New(
 	controller *asyncapi.UserController,
-	logger *slog.Logger,
+	logger *zap.Logger,
 	info DeviceInfoService,
 	sensorID string,
 	sensorName string,
@@ -85,8 +85,10 @@ func (p *Publisher) declare() error {
 
 	p.logger.Info(
 		"Sensors declared",
-		"sensorId", string(p.sensorID),
-		"sensorName", p.sensorName,
+		zap.Object("sensor", zap.DictObject(
+			zap.String("id", string(p.sensorID)),
+			zap.String("name", p.sensorName),
+		)),
 	)
 
 	return nil
@@ -109,6 +111,8 @@ func (p *Publisher) startPublishing() {
 }
 
 // temperature имитирует температуру холодильной камеры около -16.5°C.
+//
+//nolint:mnd, gosec
 func (p *Publisher) temperature() float64 {
 	base := -16.5 + math.Sin(float64(time.Now().UnixNano())/1e9/60)*0.6
 
@@ -144,10 +148,13 @@ func (p *Publisher) publishMetric() {
 		},
 	)
 	if err != nil {
-		p.logger.Error("Publish metric", "error", err.Error())
+		p.logger.Error("Publish metric", zap.Error(err))
 
 		return
 	}
 
-	p.logger.Info("Published metric", "sensorId", string(p.sensorID), "value", value)
+	p.logger.Info("Published metric",
+		zap.String("sensorId", string(p.sensorID)),
+		zap.Float64("value", value),
+	)
 }

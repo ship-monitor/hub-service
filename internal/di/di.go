@@ -2,7 +2,6 @@ package di
 
 import (
 	"fmt"
-	"log/slog"
 
 	"github.com/lerenn/asyncapi-codegen/pkg/extensions/brokers/nats"
 	"github.com/ship-monitor/cloud/pkg/connector/asyncapi"
@@ -17,11 +16,10 @@ import (
 	"go.uber.org/zap"
 )
 
-func NewApp(config *config.Config) *fx.App {
+func NewApp(config *config.Config, logger *zap.Logger) *fx.App {
 	return fx.New(
 		fx.Supply(config),
-		fx.Provide(newLogger),
-		fx.Provide(newLoggerZap),
+		fx.Supply(logger),
 
 		fx.Provide(info.New),
 		fx.Provide(newAlivePub),
@@ -49,7 +47,7 @@ func newAlivePub(
 	return pub, nil
 }
 func newConnectPub(
-	logger *slog.Logger,
+	logger *zap.Logger,
 	conn *asyncapi.UserController,
 	info *info.Service,
 ) (*connect.P, error) {
@@ -58,7 +56,7 @@ func newConnectPub(
 func newSensorsPub(
 	lc fx.Lifecycle,
 	conn *asyncapi.UserController,
-	logger *slog.Logger,
+	logger *zap.Logger,
 	info *info.Service,
 	config *config.Config,
 ) (*sensors.Publisher, error) {
@@ -68,23 +66,11 @@ func newSensorsPub(
 
 	return pub, nil
 }
-func newLogger() *slog.Logger {
-	return slog.Default()
-}
-func newLoggerZap() (*zap.Logger, error) {
-	logger, err := zap.NewDevelopment()
-	if err != nil {
-		return nil, fmt.Errorf("new logger: %w", err)
-	}
-
-	return logger, nil
-}
-
 func newSub(
 	lc fx.Lifecycle,
 	controller *asyncapi.UserController,
 	info *info.Service,
-	logger *slog.Logger,
+	logger *zap.Logger,
 	pub *connect.P,
 ) (*subscriber.S, error) {
 	s := subscriber.New(controller, info, logger, pub)
