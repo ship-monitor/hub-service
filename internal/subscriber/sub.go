@@ -38,6 +38,9 @@ func New(
 	}
 }
 func (s *S) Start(ctx context.Context) error {
+	ctx, cancel := context.WithCancel(ctx)
+	s.cancel = cancel
+
 	err := s.controller.SubscribeToPublishConnectRequestOperation(
 		ctx,
 		asyncapi.ConnectRequestsChannelParameters{DeviceId: s.info.ID().String()},
