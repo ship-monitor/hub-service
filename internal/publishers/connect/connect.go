@@ -25,7 +25,7 @@ func New(
 	info Info,
 ) *P {
 	return &P{
-		logger:     logger,
+		logger:     logger.Named("Connect"),
 		controller: controller,
 		info:       info,
 	}
@@ -41,7 +41,7 @@ func (p *P) PublishConnectResponse(ctx context.Context, response *asyncapi.Conne
 		return fmt.Errorf("send response: %w", err)
 	}
 
-	p.logger.Info("Connect response published")
+	p.logger.Info("Published connect response")
 
 	return nil
 }

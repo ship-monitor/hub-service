@@ -30,7 +30,7 @@ func New(
 ) *Publisher {
 	return &Publisher{
 		controller: controller,
-		logger:     logger,
+		logger:     logger.Named("Alive"),
 		info:       info,
 		stop:       make(chan struct{}),
 	}

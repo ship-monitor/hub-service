@@ -37,7 +37,7 @@ func New(
 ) *Publisher {
 	return &Publisher{
 		controller: controller,
-		logger:     logger,
+		logger:     logger.Named("Sensors"),
 		info:       info,
 		sensorID:   asyncapi.SensorID(sensorID),
 		sensorName: sensorName,
