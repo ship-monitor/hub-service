@@ -1,41 +1,29 @@
 package config
 
 import (
-	"os"
+	"strings"
 
-	"github.com/google/uuid"
+	"github.com/ship-monitor/cloud/pkg/configer"
 )
-
-const defaultDeviceID = "3dea52fe-4fa8-43cf-9ea1-d54c7b74d467"
 
 type NATS struct {
 	URL string
 }
 
 type Config struct {
-	NATS       NATS
-	DeviceID   uuid.UUID
-	SensorID   string
-	SensorName string
+	NATS NATS
+	Mode string
 }
 
-func getenv(key, fallback string) string {
-	if value, ok := os.LookupEnv(key); ok {
-		return value
-	}
-
-	return fallback
+func (c *Config) IsDevelopment() bool {
+	return strings.Contains(strings.ToUpper(c.Mode), "DEV")
 }
 
 func New() Config {
 	return Config{
+		Mode: configer.GetOrDefault("MODE", "DEVELOPMENT"),
 		NATS: NATS{
-			URL: getenv("NATS_URL", "nats://localhost:4222"),
+			URL: configer.GetOrDefault("NATS_URL", "nats://localhost:4222"),
 		},
-		DeviceID: uuid.MustParse(
-			getenv("DEVICE_ID", defaultDeviceID),
-		),
-		SensorID:    getenv("SENSOR_ID", "temp-1"),
-		SensorName:  getenv("SENSOR_NAME", "Температура камеры"),
 	}
 }

@@ -21,7 +21,7 @@ func NewApp(config *config.Config, logger *zap.Logger) *fx.App {
 		fx.Supply(config),
 		fx.Supply(logger),
 
-		fx.Provide(info.New),
+		fx.Provide(newInfo),
 		fx.Provide(newAlivePub),
 		fx.Provide(newConnectPub),
 		fx.Provide(newSensorsPub),
@@ -33,6 +33,23 @@ func NewApp(config *config.Config, logger *zap.Logger) *fx.App {
 		fx.Invoke(func(*alive.Publisher) {}),
 		fx.Invoke(func(*sensors.Publisher) {}),
 	)
+}
+
+func newInfo(
+	lc fx.Lifecycle,
+	config *config.Config,
+	logger *zap.Logger,
+) (*info.Service, error) {
+	s, err := info.New(config, logger)
+	if err != nil {
+		return nil, fmt.Errorf("new info service: %w", err)
+	}
+
+	lc.Append(fx.StartHook(func() {
+		logger.Info("Device info", zap.Any("id", s.ID()))
+	}))
+
+	return s, nil
 }
 func newAlivePub(
 	lc fx.Lifecycle,
@@ -60,7 +77,7 @@ func newSensorsPub(
 	info *info.Service,
 	config *config.Config,
 ) (*sensors.Publisher, error) {
-	pub := sensors.New(conn, logger, info, config.SensorID, config.SensorName)
+	pub := sensors.New(conn, logger, info)
 
 	lc.Append(fx.StartStopHook(pub.Start, pub.Stop))
 

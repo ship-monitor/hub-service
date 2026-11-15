@@ -28,6 +28,8 @@ github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZb
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/ship-monitor/cloud v1.1.2 h1:5uu22GO0HljvJMRqtFd6xumyLcwQzs+BM7NJO+uJAKQ=
 github.com/ship-monitor/cloud v1.1.2/go.mod h1:Hwoyj/Z879WuJs4AQ/3+PE4HBsc4K4TY7OJ4QnuNteE=
+github.com/ship-monitor/cloud v1.2.0 h1:5EnkGzm29bPIh9XbvOsvTWodOyUZNnfY3mY8KTC1itE=
+github.com/ship-monitor/cloud v1.2.0/go.mod h1:ESXmAinTJYXoaC0m8xn4jbTRqmAV8Aj2n0LlgmV+XZk=
 github.com/stretchr/testify v1.9.0 h1:HtqpIVDClZ4nwg75+f6Lvsy/wHu+3BoSGCbBAcpTsTg=
 github.com/stretchr/testify v1.9.0/go.mod h1:r2ic/lqez/lEtzL7wO/rwa5dbSLXVDPFyf8C91i36aY=
 go.uber.org/dig v1.19.0 h1:BACLhebsYdpQ7IROQ1AGPjrXcP5dF80U3gKoFzbaq/4=

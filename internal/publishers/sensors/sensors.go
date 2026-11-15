@@ -12,6 +12,12 @@ import (
 	"go.uber.org/zap"
 )
 
+//nolint:gochecknoglobals
+var sensors = []asyncapi.SensorDeclarationItemSchema{
+	{Id: asyncapi.SensorID(uuid.NewString()), Name: "coldstat-sensor-1"},
+	{Id: asyncapi.SensorID(uuid.NewString()), Name: "coldstat-sensor-2"},
+}
+
 // SendTimeout represents timeout between sending metrics.
 const SendTimeout = time.Second * 30
 
@@ -23,8 +29,6 @@ type Publisher struct {
 	controller *asyncapi.UserController
 	logger     *zap.Logger
 	info       DeviceInfoService
-	sensorID   asyncapi.SensorID
-	sensorName string
 	stop       chan struct{}
 }
 
@@ -32,15 +36,11 @@ func New(
 	controller *asyncapi.UserController,
 	logger *zap.Logger,
 	info DeviceInfoService,
-	sensorID string,
-	sensorName string,
 ) *Publisher {
 	return &Publisher{
 		controller: controller,
 		logger:     logger.Named("Sensors"),
 		info:       info,
-		sensorID:   asyncapi.SensorID(sensorID),
-		sensorName: sensorName,
 		stop:       make(chan struct{}),
 	}
 }
@@ -73,23 +73,13 @@ func (p *Publisher) declare() error {
 				Authorization: p.info.ID().String(),
 			},
 			Payload: asyncapi.SensorDeclarationSchema{
-				Sensors: []asyncapi.SensorDeclarationItemSchema{
-					{Id: p.sensorID, Name: p.sensorName},
-				},
+				Sensors: sensors,
 			},
 		},
 	)
 	if err != nil {
 		return fmt.Errorf("send declaration: %w", err)
 	}
-
-	p.logger.Info(
-		"Sensors declared",
-		zap.Object("sensor", zap.DictObject(
-			zap.String("id", string(p.sensorID)),
-			zap.String("name", p.sensorName),
-		)),
-	)
 
 	return nil
 }
@@ -124,37 +114,39 @@ func (p *Publisher) publishMetric() {
 
 	value := p.temperature()
 
-	err := p.controller.SendToMetricsOperationForSensorMetrics(
-		ctx,
-		asyncapi.MetricsChannelParameters{
-			DeviceId: p.info.ID().String(),
-		},
-		asyncapi.SensorMetricsMessage{
-			Headers: asyncapi.IdentificationHeadersSchema{
-				Authorization: p.info.ID().String(),
+	for _, s := range sensors {
+		err := p.controller.SendToMetricsOperationForSensorMetrics(
+			ctx,
+			asyncapi.MetricsChannelParameters{
+				DeviceId: p.info.ID().String(),
 			},
-			Payload: asyncapi.SensorMetricsMessagePayload{
-				SensorID: p.sensorID,
-				Metrics: []asyncapi.MetricSchema{
-					{
-						Name:      "temperature",
-						Type:      asyncapi.TypePropertyFromMetricSchemaGAUGE,
-						Unit:      "C",
-						Value:     value,
-						Timestamp: time.Now().UTC(),
+			asyncapi.SensorMetricsMessage{
+				Headers: asyncapi.IdentificationHeadersSchema{
+					Authorization: p.info.ID().String(),
+				},
+				Payload: asyncapi.SensorMetricsMessagePayload{
+					SensorID: s.Id,
+					Metrics: []asyncapi.MetricSchema{
+						{
+							Name:      "temperature",
+							Type:      asyncapi.TypePropertyFromMetricSchemaGAUGE,
+							Unit:      "C",
+							Value:     value,
+							Timestamp: time.Now().UTC(),
+						},
 					},
 				},
 			},
-		},
-	)
-	if err != nil {
-		p.logger.Error("Publish metric", zap.Error(err))
+		)
+		if err != nil {
+			p.logger.Error("Publish metric", zap.Error(err))
 
-		return
+			return
+		}
+
+		p.logger.Info("Published metric",
+			zap.String("sensorId", string(s.Id)),
+			zap.Float64("value", value),
+		)
 	}
-
-	p.logger.Info("Published metric",
-		zap.String("sensorId", string(p.sensorID)),
-		zap.Float64("value", value),
-	)
 }
