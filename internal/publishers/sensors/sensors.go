@@ -114,6 +114,8 @@ func (p *Publisher) publishMetric() {
 
 	value := p.temperature()
 
+	timestamp := time.Now().UTC()
+
 	for _, s := range sensors {
 		err := p.controller.SendToMetricsOperationForSensorMetrics(
 			ctx,
@@ -128,11 +130,18 @@ func (p *Publisher) publishMetric() {
 					SensorID: s.Id,
 					Metrics: []asyncapi.MetricSchema{
 						{
-							Name:      "temperature",
+							Name:      TemperatureMetric,
 							Type:      asyncapi.TypePropertyFromMetricSchemaGAUGE,
 							Unit:      "C",
 							Value:     value,
-							Timestamp: time.Now().UTC(),
+							Timestamp: timestamp,
+						},
+						{
+							Name:      BatteryMetric,
+							Type:      asyncapi.TypePropertyFromMetricSchemaGAUGE,
+							Unit:      "%",
+							Value:     100, //nolint:mnd
+							Timestamp: timestamp,
 						},
 					},
 				},
@@ -144,9 +153,11 @@ func (p *Publisher) publishMetric() {
 			return
 		}
 
-		p.logger.Info("Published metric",
+		p.logger.Info("Published metrics",
 			zap.String("sensorId", string(s.Id)),
-			zap.Float64("value", value),
 		)
 	}
 }
+
+const TemperatureMetric = "temperature"
+const BatteryMetric = "device.battery"
