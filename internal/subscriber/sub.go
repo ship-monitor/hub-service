@@ -12,6 +12,7 @@ import (
 
 type Info interface {
 	ID() uuid.UUID
+	CheckSecurityKey(key string) bool
 }
 
 type S struct {
@@ -57,11 +58,16 @@ func (s *S) Stop() {
 }
 
 func (s *S) HandleConnectRequest(ctx context.Context, message asyncapi.ConnectRequestMessage) error {
-	s.logger.Info("Connect request received", zap.String("requestID", message.Payload.RequestID.String()))
+	approve := s.info.CheckSecurityKey(message.Payload.SecretKey)
+
+	s.logger.Info("Connect request received",
+		zap.String("requestID", message.Payload.RequestID.String()),
+		zap.Bool("approve", approve),
+	)
 
 	err := s.pub.PublishConnectResponse(ctx, &asyncapi.ConnectResponseMessage{
 		Payload: asyncapi.ConnectResponseSchema{
-			Approve:   true,
+			Approve:   approve,
 			RequestID: message.Payload.RequestID,
 		},
 		Headers: asyncapi.IdentificationHeadersSchema{

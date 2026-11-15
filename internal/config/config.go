@@ -13,11 +13,10 @@ type NATS struct {
 }
 
 type Config struct {
-	NATS        NATS
-	DeviceID    uuid.UUID
-	SecurityKey string
-	SensorID    string
-	SensorName  string
+	NATS       NATS
+	DeviceID   uuid.UUID
+	SensorID   string
+	SensorName string
 }
 
 func getenv(key, fallback string) string {
@@ -36,7 +35,6 @@ func New() Config {
 		DeviceID: uuid.MustParse(
 			getenv("DEVICE_ID", defaultDeviceID),
 		),
-		SecurityKey: os.Getenv("SECURITY_KEY"),
 		SensorID:    getenv("SENSOR_ID", "temp-1"),
 		SensorName:  getenv("SENSOR_NAME", "Температура камеры"),
 	}
