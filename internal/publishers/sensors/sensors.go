@@ -137,10 +137,17 @@ func (p *Publisher) publishMetric() {
 							Timestamp: timestamp,
 						},
 						{
-							Name:      BatteryMetric,
+							Name:      BatteryLevelMetric,
 							Type:      asyncapi.TypePropertyFromMetricSchemaGAUGE,
 							Unit:      "%",
 							Value:     100, //nolint:mnd
+							Timestamp: timestamp,
+						},
+						{
+							Name:      PowerConnectedMetric,
+							Type:      asyncapi.TypePropertyFromMetricSchemaGAUGE,
+							Unit:      "1",
+							Value:     PowerConnected,
 							Timestamp: timestamp,
 						},
 					},
@@ -160,4 +167,12 @@ func (p *Publisher) publishMetric() {
 }
 
 const TemperatureMetric = "temperature"
-const BatteryMetric = "device.battery"
+const BatteryLevelMetric = "battery-level"
+const PowerConnectedMetric = "power-connected"
+
+const (
+	// PowerConnected represent external powering.
+	PowerConnected = 1
+	// PowerDisconnected represents battery powering.
+	PowerDisconnected = 0
+)
