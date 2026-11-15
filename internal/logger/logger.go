@@ -7,7 +7,7 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-func New() (*zap.Logger, error) {
+func New(name string) (*zap.Logger, error) {
 	conf := zap.NewDevelopmentConfig()
 	conf.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
 
@@ -16,5 +16,5 @@ func New() (*zap.Logger, error) {
 		return nil, fmt.Errorf("build logger from config: %w", err)
 	}
 
-	return logger, nil
+	return logger.Named(name), nil
 }

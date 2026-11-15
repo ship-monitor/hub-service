@@ -12,7 +12,7 @@ import (
 func main() {
 	conf := config.New()
 
-	logger, err := logger.New()
+	logger, err := logger.New("HUB")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "ERROR: New logger: %s", err.Error())
 		os.Exit(1)
