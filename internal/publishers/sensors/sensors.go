@@ -57,7 +57,7 @@ func (p *Publisher) Start() error {
 }
 
 func (p *Publisher) Stop() {
-	close(p.stop)
+	p.stop <- struct{}{}
 }
 
 func (p *Publisher) declare() error {
