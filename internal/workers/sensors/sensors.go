@@ -57,16 +57,9 @@ func New(
 	}
 }
 
-func (w *Worker) Start(ctx context.Context) error {
-	err := w.declare(ctx)
-	if err != nil {
-		return fmt.Errorf("declare sensors: %w", err)
-	}
-
-	go w.startPublishingMetrics()      //nolint:gosec, contextcheck
-	go w.startPublishingDeclarations() //nolint:gosec, contextcheck
-
-	return nil
+func (w *Worker) Start() {
+	go w.startPublishingMetrics()
+	go w.startPublishingDeclarations()
 }
 
 func (w *Worker) Stop() {
@@ -102,26 +95,32 @@ func (w *Worker) declare(ctx context.Context) error {
 	return nil
 }
 func (w *Worker) startPublishingDeclarations() {
+	w.publishDeclaration()
+
 	ticker := time.NewTicker(SendDeclarationTimeout)
 	defer ticker.Stop()
 
 	for {
 		select {
 		case <-ticker.C:
-			ctx, cancel := context.WithTimeout(context.Background(), SendDeclarationTimeout)
-			defer cancel()
-
-			err := w.declare(ctx)
-			if err != nil {
-				w.logger.Error("Publish declaration", zap.Error(err))
-			} else {
-				w.logger.Info("Published declaration")
-			}
+			w.publishDeclaration()
 		case <-w.stop:
 			w.logger.Info("Receive stop")
 
 			return
 		}
+	}
+}
+
+func (w *Worker) publishDeclaration() {
+	ctx, cancel := context.WithTimeout(context.Background(), SendDeclarationTimeout)
+	defer cancel()
+
+	err := w.declare(ctx)
+	if err != nil {
+		w.logger.Error("Publish declaration", zap.Error(err))
+	} else {
+		w.logger.Info("Published declaration")
 	}
 }
 

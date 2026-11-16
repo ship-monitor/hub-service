@@ -10,6 +10,7 @@ import (
 func New(name string) (*zap.Logger, error) {
 	conf := zap.NewDevelopmentConfig()
 	conf.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
+	conf.DisableStacktrace = true
 
 	logger, err := conf.Build()
 	if err != nil {
