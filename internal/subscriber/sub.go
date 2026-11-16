@@ -6,7 +6,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/ship-monitor/cloud/pkg/connector/asyncapi"
-	"github.com/ship-monitor/hub-service/internal/publishers/connect"
 	"go.uber.org/zap"
 )
 
@@ -15,11 +14,15 @@ type Info interface {
 	CheckSecurityKey(key string) bool
 }
 
+type Publisher interface {
+	PublishConnectResponse(ctx context.Context, response *asyncapi.ConnectResponseSchema) error
+}
+
 type S struct {
 	controller *asyncapi.UserController
 	info       Info
 	logger     *zap.Logger
-	pub        *connect.P
+	pub        Publisher
 
 	cancel context.CancelFunc
 }
@@ -28,7 +31,7 @@ func New(
 	controller *asyncapi.UserController,
 	info Info,
 	logger *zap.Logger,
-	pub *connect.P,
+	pub Publisher,
 ) *S {
 	return &S{
 		controller: controller,
@@ -65,15 +68,12 @@ func (s *S) HandleConnectRequest(ctx context.Context, message asyncapi.ConnectRe
 		zap.Bool("approve", approve),
 	)
 
-	err := s.pub.PublishConnectResponse(ctx, &asyncapi.ConnectResponseMessage{
-		Payload: asyncapi.ConnectResponseSchema{
+	err := s.pub.PublishConnectResponse(ctx,
+		&asyncapi.ConnectResponseSchema{
 			Approve:   approve,
 			RequestID: message.Payload.RequestID,
 		},
-		Headers: asyncapi.IdentificationHeadersSchema{
-			Authorization: s.info.ID().String(),
-		},
-	})
+	)
 	if err != nil {
 		s.logger.Error("Publish connect response", zap.Error(err))
 
