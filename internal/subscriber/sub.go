@@ -3,22 +3,26 @@ package subscriber
 import (
 	"context"
 	"fmt"
-	"log/slog"
 
 	"github.com/google/uuid"
 	"github.com/ship-monitor/cloud/pkg/connector/asyncapi"
-	"github.com/ship-monitor/hub-service/internal/publishers/connect"
+	"go.uber.org/zap"
 )
 
 type Info interface {
 	ID() uuid.UUID
+	CheckSecurityKey(key string) bool
+}
+
+type Publisher interface {
+	PublishConnectResponse(ctx context.Context, response *asyncapi.ConnectResponseSchema) error
 }
 
 type S struct {
 	controller *asyncapi.UserController
 	info       Info
-	logger     *slog.Logger
-	pub        *connect.P
+	logger     *zap.Logger
+	pub        Publisher
 
 	cancel context.CancelFunc
 }
@@ -26,18 +30,21 @@ type S struct {
 func New(
 	controller *asyncapi.UserController,
 	info Info,
-	logger *slog.Logger,
-	pub *connect.P,
+	logger *zap.Logger,
+	pub Publisher,
 ) *S {
 	return &S{
 		controller: controller,
 		info:       info,
-		logger:     logger.WithGroup("Subscriber"),
+		logger:     logger.Named("Subscriber"),
 		pub:        pub,
 		cancel:     nil,
 	}
 }
 func (s *S) Start(ctx context.Context) error {
+	ctx, cancel := context.WithCancel(ctx)
+	s.cancel = cancel
+
 	err := s.controller.SubscribeToPublishConnectRequestOperation(
 		ctx,
 		asyncapi.ConnectRequestsChannelParameters{DeviceId: s.info.ID().String()},
@@ -54,19 +61,21 @@ func (s *S) Stop() {
 }
 
 func (s *S) HandleConnectRequest(ctx context.Context, message asyncapi.ConnectRequestMessage) error {
-	s.logger.Info("Connect request received", "requestId", message.Payload.RequestId)
+	approve := s.info.CheckSecurityKey(message.Payload.SecretKey)
 
-	err := s.pub.PublishConnectResponse(ctx, &asyncapi.ConnectResponseMessage{
-		Payload: asyncapi.ConnectResponseSchema{
-			Approve:   true,
-			RequestId: message.Payload.RequestId,
+	s.logger.Info("Connect request received",
+		zap.String("requestID", message.Payload.RequestID.String()),
+		zap.Bool("approve", approve),
+	)
+
+	err := s.pub.PublishConnectResponse(ctx,
+		&asyncapi.ConnectResponseSchema{
+			Approve:   approve,
+			RequestID: message.Payload.RequestID,
 		},
-		Headers: asyncapi.IdentificationHeadersSchema{
-			Authorization: s.info.ID().String(),
-		},
-	})
+	)
 	if err != nil {
-		s.logger.Error("Publish connect response", "error", err.Error())
+		s.logger.Error("Publish connect response", zap.Error(err))
 
 		return fmt.Errorf("publish connect response: %w", err)
 	}

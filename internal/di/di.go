@@ -2,74 +2,77 @@ package di
 
 import (
 	"fmt"
-	"log/slog"
 
 	"github.com/lerenn/asyncapi-codegen/pkg/extensions/brokers/nats"
 	"github.com/ship-monitor/cloud/pkg/connector/asyncapi"
 	"github.com/ship-monitor/cloud/pkg/connector/common"
 	"github.com/ship-monitor/hub-service/internal/config"
-	"github.com/ship-monitor/hub-service/internal/publishers/alive"
-	"github.com/ship-monitor/hub-service/internal/publishers/connect"
+	"github.com/ship-monitor/hub-service/internal/publishers"
+	"github.com/ship-monitor/hub-service/internal/repositories/sensor"
+	"github.com/ship-monitor/hub-service/internal/services/auth"
 	"github.com/ship-monitor/hub-service/internal/services/info"
 	"github.com/ship-monitor/hub-service/internal/subscriber"
+	"github.com/ship-monitor/hub-service/internal/workers/device"
+	"github.com/ship-monitor/hub-service/internal/workers/sensors"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 )
 
-func NewApp(config *config.Config) *fx.App {
+func NewApp(config *config.Config, logger *zap.Logger) *fx.App {
 	return fx.New(
 		fx.Supply(config),
-		fx.Provide(newLogger),
-		fx.Provide(newLoggerZap),
+		fx.Supply(logger),
 
-		fx.Provide(info.New),
-		fx.Provide(newAlivePub),
-		fx.Provide(newConnectPub),
+		fx.Provide(newInfoService),
+		fx.Provide(newAuthService),
+
+		fx.Provide(newPub),
+		fx.Provide(newSensorsWorker),
+
 		fx.Provide(newSub),
 
 		fx.Provide(newConnectorController),
 
+		fx.Provide(newDeviceWorker),
+
+		fx.Provide(sensor.New),
+
 		fx.Invoke(func(*subscriber.S) {}),
-		fx.Invoke(func(*alive.Publisher) {}),
+		fx.Invoke(func(*device.Worker) {}),
+		fx.Invoke(func(*sensors.Worker) {}),
 	)
 }
-func newAlivePub(
+
+func newInfoService(
 	lc fx.Lifecycle,
-	conn *asyncapi.UserController,
+	config *config.Config,
 	logger *zap.Logger,
-	info *info.Service,
-) (*alive.Publisher, error) {
-	pub := alive.New(conn, logger, info)
-
-	lc.Append(fx.StartStopHook(pub.Start, pub.Stop))
-
-	return pub, nil
-}
-func newConnectPub(
-	logger *slog.Logger,
-	conn *asyncapi.UserController,
-	info *info.Service,
-) (*connect.P, error) {
-	return connect.New(logger, conn, info), nil
-}
-func newLogger() *slog.Logger {
-	return slog.Default()
-}
-func newLoggerZap() (*zap.Logger, error) {
-	logger, err := zap.NewDevelopment()
+) (*info.Service, error) {
+	s, err := info.New(config, logger)
 	if err != nil {
-		return nil, fmt.Errorf("new logger: %w", err)
+		return nil, fmt.Errorf("new info service: %w", err)
 	}
 
-	return logger, nil
-}
+	lc.Append(fx.StartHook(func() {
+		logger.Info("Device info", zap.Any("id", s.ID()))
+	}))
 
+	return s, nil
+}
+func newPub(
+	logger *zap.Logger,
+	conn *asyncapi.UserController,
+	info *info.Service,
+	auth *auth.Service,
+) (*publishers.P, error) {
+	return publishers.New(conn, logger, info, auth), nil
+}
 func newSub(
 	lc fx.Lifecycle,
 	controller *asyncapi.UserController,
 	info *info.Service,
-	logger *slog.Logger,
-	pub *connect.P,
+	logger *zap.Logger,
+	pub *publishers.P,
 ) (*subscriber.S, error) {
 	s := subscriber.New(controller, info, logger, pub)
 
@@ -93,4 +96,7 @@ func newConnectorController(
 	}
 
 	return c, nil
+}
+func newAuthService(info *info.Service) *auth.Service {
+	return auth.New(info)
 }
