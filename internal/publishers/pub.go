@@ -43,8 +43,8 @@ func (p *P) PublishDeviceMetrics(ctx context.Context, metrics []asyncapi.MetricS
 		return fmt.Errorf("unauthenticated: get auth header: %w", err)
 	}
 
-	err = p.controller.SendToMetricsOperationForMetrics(ctx,
-		asyncapi.MetricsChannelParameters{
+	err = p.controller.SendToDeviceMetricsOperation(ctx,
+		asyncapi.DeviceMetricsChannelParameters{
 			DeviceId: p.info.ID().String(),
 		},
 		asyncapi.MetricsMessage{
@@ -114,9 +114,9 @@ func (p *P) PublishSensorMetrics(ctx context.Context, metrics asyncapi.SensorMet
 		return fmt.Errorf("unauthenticated: get auth header: %w", err)
 	}
 
-	err = p.controller.SendToMetricsOperationForSensorMetrics(
+	err = p.controller.SendToSensorMetricsOperation(
 		ctx,
-		asyncapi.MetricsChannelParameters{
+		asyncapi.SensorMetricsChannelParameters{
 			DeviceId: p.info.ID().String(),
 		},
 		asyncapi.SensorMetricsMessage{
