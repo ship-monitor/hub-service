@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/ship-monitor/cloud/pkg/connector/asyncapi"
+	"github.com/ship-monitor/hub-service/pkg"
 	"go.uber.org/zap"
 )
 
@@ -68,6 +69,8 @@ func (s *S) Stop() {
 }
 
 func (s *S) HandleConnectRequest(ctx context.Context, message asyncapi.ConnectRequestMessage) error {
+	const retryCount = 3
+
 	approve := s.info.CheckSecurityKey(message.Payload.SecretKey)
 
 	s.logger.Info("Connect request received",
@@ -75,28 +78,38 @@ func (s *S) HandleConnectRequest(ctx context.Context, message asyncapi.ConnectRe
 		zap.Bool("approve", approve),
 	)
 
-	err := s.pub.PublishConnectResponse(ctx,
-		&asyncapi.ConnectResponseSchema{
-			Approve:   approve,
-			RequestID: message.Payload.RequestID,
-		},
+	err := pkg.ExecuteWitrRetry(ctx, retryCount, func(ctx context.Context) error {
+		err := s.pub.PublishConnectResponse(ctx,
+			&asyncapi.ConnectResponseSchema{
+				Approve:   approve,
+				RequestID: message.Payload.RequestID,
+			},
+		)
+		if err != nil {
+			return fmt.Errorf("publish connect response: %w", err)
+		}
+
+		return nil
+	},
 	)
 	if err != nil {
 		s.logger.Error("Publish connect response", zap.Error(err))
 
-		return fmt.Errorf("publish connect response: %w", err)
+		return fmt.Errorf("publish response: %w", err)
 	}
 
-	for range 3 {
-		ctx, cancel := context.WithCancel(ctx)
-		defer cancel()
-
+	err = pkg.ExecuteWitrRetry(ctx, retryCount, func(ctx context.Context) error {
 		err := s.firmware.PublishFirmware(ctx)
 		if err != nil {
-			s.logger.Error("Publish firmware", zap.Error(err))
-		} else {
-			break
+			return fmt.Errorf("publish firmware: %w", err)
 		}
+
+		return nil
+	})
+	if err != nil {
+		s.logger.Error("Publish firmware", zap.Error(err))
+
+		return fmt.Errorf("publish firmware: %w", err)
 	}
 
 	return nil
