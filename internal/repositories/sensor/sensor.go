@@ -10,8 +10,22 @@ import (
 
 //nolint:gochecknoglobals
 var sensors = []types.Sensor{
-	{ID: uuid.New(), Name: "coldstat-sensor-1"},
-	{ID: uuid.New(), Name: "coldstat-sensor-2"},
+	{
+		ID:           uuid.New(),
+		Name:         "coldstat-sensor-1",
+		Manufacturer: "coldstat",
+		Model:        "virtual-temp-sensor",
+		Revision:     "r-1-191126",
+		Software:     "virt@v1.0.0",
+	},
+	{
+		ID:           uuid.New(),
+		Name:         "coldstat-sensor-2",
+		Manufacturer: "coldstat",
+		Model:        "virtual-temp-sensor",
+		Revision:     "r-1-191126",
+		Software:     "virt@v1.0.0",
+	},
 }
 
 type Repo struct {

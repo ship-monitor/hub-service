@@ -48,9 +48,7 @@ func (w *Worker) publishHeartbeat(ctx context.Context) error {
 }
 
 func NewHeartbeat() *asyncapi.HeartbeatSchema {
-	timestamp := time.Now().Unix()
-
 	return &asyncapi.HeartbeatSchema{
-		Timestamp: timestamp,
+		Timestamp: time.Now().UTC(),
 	}
 }

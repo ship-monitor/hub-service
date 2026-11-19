@@ -209,6 +209,12 @@ func mapSensors(sensors []types.Sensor) []asyncapi.SensorDeclarationItemSchema {
 		result = append(result, asyncapi.SensorDeclarationItemSchema{
 			Id:   asyncapi.SensorID(s.ID.String()),
 			Name: s.Name,
+			Firmware: asyncapi.FirmwareSchema{
+				Manufacturer: s.Manufacturer,
+				Model:        s.Model,
+				Revision:     s.Revision,
+				Software:     s.Software,
+			},
 		})
 	}
 
