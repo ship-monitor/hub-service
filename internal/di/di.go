@@ -73,8 +73,9 @@ func newSub(
 	info *info.Service,
 	logger *zap.Logger,
 	pub *publishers.P,
+	firmware *device.Worker,
 ) (*subscriber.S, error) {
-	s := subscriber.New(controller, info, logger, pub)
+	s := subscriber.New(controller, info, logger, pub, firmware)
 
 	lc.Append(fx.StartStopHook(s.Start, s.Stop))
 

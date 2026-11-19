@@ -16,8 +16,9 @@ func newDeviceWorker(
 	lc fx.Lifecycle,
 	logger *zap.Logger,
 	pub *publishers.P,
+	info *info.Service,
 ) *device.Worker {
-	worker := device.New(logger.Named("Workers"), pub, pub)
+	worker := device.New(logger.Named("Workers"), pub, pub, pub, info)
 
 	lc.Append(fx.StartStopHook(worker.Start, worker.Stop))
 

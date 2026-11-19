@@ -18,11 +18,16 @@ type Publisher interface {
 	PublishConnectResponse(ctx context.Context, response *asyncapi.ConnectResponseSchema) error
 }
 
+type FirmwarePub interface {
+	PublishFirmware(ctx context.Context) error
+}
+
 type S struct {
 	controller *asyncapi.UserController
 	info       Info
 	logger     *zap.Logger
 	pub        Publisher
+	firmware   FirmwarePub
 
 	cancel context.CancelFunc
 }
@@ -32,12 +37,14 @@ func New(
 	info Info,
 	logger *zap.Logger,
 	pub Publisher,
+	firmware FirmwarePub,
 ) *S {
 	return &S{
 		controller: controller,
 		info:       info,
 		logger:     logger.Named("Subscriber"),
 		pub:        pub,
+		firmware:   firmware,
 		cancel:     nil,
 	}
 }
@@ -78,6 +85,18 @@ func (s *S) HandleConnectRequest(ctx context.Context, message asyncapi.ConnectRe
 		s.logger.Error("Publish connect response", zap.Error(err))
 
 		return fmt.Errorf("publish connect response: %w", err)
+	}
+
+	for range 3 {
+		ctx, cancel := context.WithCancel(ctx)
+		defer cancel()
+
+		err := s.firmware.PublishFirmware(ctx)
+		if err != nil {
+			s.logger.Error("Publish firmware", zap.Error(err))
+		} else {
+			break
+		}
 	}
 
 	return nil

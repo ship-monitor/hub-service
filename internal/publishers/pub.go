@@ -132,3 +132,28 @@ func (p *P) PublishSensorMetrics(ctx context.Context, metrics asyncapi.SensorMet
 
 	return nil
 }
+
+func (p *P) PublishFirmware(ctx context.Context, firmware asyncapi.FirmwareSchema) error {
+	header, err := p.auth.GetAuthHeader(ctx)
+	if err != nil {
+		return fmt.Errorf("unauthenticated: get auth header: %w", err)
+	}
+
+	err = p.controller.SendToFirmwareOperation(
+		ctx,
+		asyncapi.FirmwareChannelParameters{
+			DeviceId: p.info.ID().String(),
+		},
+		asyncapi.FirmwareMessage{
+			Headers: asyncapi.IdentificationHeadersSchema{
+				Authorization: header,
+			},
+			Payload: firmware,
+		},
+	)
+	if err != nil {
+		return fmt.Errorf("send firmware: %w", err)
+	}
+
+	return nil
+}

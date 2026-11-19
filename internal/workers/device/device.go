@@ -16,11 +16,19 @@ type HeartbeatPub interface {
 type MetricsPub interface {
 	PublishDeviceMetrics(ctx context.Context, m []asyncapi.MetricSchema) error
 }
+type FirmwarePub interface {
+	PublishFirmware(ctx context.Context, firmware asyncapi.FirmwareSchema) error
+}
+type Info interface {
+	Firmware() (*asyncapi.FirmwareSchema, error)
+}
 
 type Worker struct {
 	logger    *zap.Logger
 	heartbeat HeartbeatPub
 	metric    MetricsPub
+	firmware  FirmwarePub
+	info      Info
 	stop      chan struct{}
 }
 
@@ -28,11 +36,15 @@ func New(
 	logger *zap.Logger,
 	heartbeat HeartbeatPub,
 	metric MetricsPub,
+	firmware FirmwarePub,
+	info Info,
 ) *Worker {
 	return &Worker{
 		logger:    logger.Named("Device"),
 		heartbeat: heartbeat,
 		metric:    metric,
+		firmware:  firmware,
+		info:      info,
 		stop:      make(chan struct{}),
 	}
 }
@@ -40,9 +52,12 @@ func New(
 func (w *Worker) Start() {
 	go w.startPublishingHeartbeat()
 	go w.startPublishingMetrics()
+	go w.startPublishingFirmware()
 }
 
 func (w *Worker) Stop() {
+	w.stop <- struct{}{}
+
 	w.stop <- struct{}{}
 
 	w.stop <- struct{}{}
