@@ -5,7 +5,7 @@ go 1.27.0
 require (
 	github.com/google/uuid v1.6.0
 	github.com/lerenn/asyncapi-codegen v0.64.1
-	github.com/ship-monitor/cloud v1.4.0
+	github.com/ship-monitor/cloud v1.5.0
 	go.uber.org/fx v1.24.0
 	go.uber.org/zap v1.28.0
 )

@@ -157,3 +157,28 @@ func (p *P) PublishFirmware(ctx context.Context, firmware asyncapi.FirmwareSchem
 
 	return nil
 }
+
+func (p *P) Publishnotification(ctx context.Context, n asyncapi.NotificationSchema) error {
+	header, err := p.auth.GetAuthHeader(ctx)
+	if err != nil {
+		return fmt.Errorf("unauthenticated: get auth header: %w", err)
+	}
+
+	err = p.controller.SendToNotificationOperation(
+		ctx,
+		asyncapi.NotificationsChannelParameters{
+			DeviceId: p.info.ID().String(),
+		},
+		asyncapi.NotificationMessage{
+			Headers: asyncapi.IdentificationHeadersSchema{
+				Authorization: header,
+			},
+			Payload: n,
+		},
+	)
+	if err != nil {
+		return fmt.Errorf("send notification: %w", err)
+	}
+
+	return nil
+}

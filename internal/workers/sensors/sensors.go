@@ -169,7 +169,7 @@ func (w *Worker) publishMetric(ctx context.Context) error {
 		value := w.temperature()
 
 		err := w.pub.PublishSensorMetrics(ctx, asyncapi.SensorMetricsMessagePayload{
-			SensorID: asyncapi.SensorID(s.ID.String()),
+			SensorID: s.ID,
 			Metrics: []asyncapi.MetricSchema{
 				{
 					Name:      metrics.Temperature,
@@ -207,7 +207,7 @@ func mapSensors(sensors []types.Sensor) []asyncapi.SensorDeclarationItemSchema {
 
 	for _, s := range sensors {
 		result = append(result, asyncapi.SensorDeclarationItemSchema{
-			Id:   asyncapi.SensorID(s.ID.String()),
+			Id:   s.ID,
 			Name: s.Name,
 			Firmware: asyncapi.FirmwareSchema{
 				Manufacturer: s.Manufacturer,
