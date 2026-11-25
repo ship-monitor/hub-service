@@ -3,7 +3,7 @@ package di
 import (
 	"github.com/ship-monitor/cloud/pkg/connector/asyncapi"
 	"github.com/ship-monitor/hub-service/internal/config"
-	"github.com/ship-monitor/hub-service/internal/publishers"
+	"github.com/ship-monitor/hub-service/internal/publisher"
 	"github.com/ship-monitor/hub-service/internal/repositories/sensor"
 	"github.com/ship-monitor/hub-service/internal/services/info"
 	"github.com/ship-monitor/hub-service/internal/workers/device"
@@ -15,7 +15,7 @@ import (
 func newDeviceWorker(
 	lc fx.Lifecycle,
 	logger *zap.Logger,
-	pub *publishers.P,
+	pub *publisher.P,
 	info *info.Service,
 ) *device.Worker {
 	worker := device.New(logger.Named("Workers"), pub, pub, pub, info)
@@ -31,7 +31,7 @@ func newSensorsWorker(
 	logger *zap.Logger,
 	info *info.Service,
 	config *config.Config,
-	pub *publishers.P,
+	pub *publisher.P,
 	repo *sensor.Repo,
 ) (*sensors.Worker, error) {
 	w := sensors.New(conn, logger.Named("Workers"), info, pub, repo)

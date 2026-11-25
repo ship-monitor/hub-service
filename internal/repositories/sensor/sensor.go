@@ -36,7 +36,7 @@ func New(
 	logger *zap.Logger,
 ) *Repo {
 	return &Repo{
-		logger: logger.Named("Reposiories.Sensor"),
+		logger: logger.Named("Repositories.Sensor"),
 	}
 }
 

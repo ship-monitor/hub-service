@@ -1,4 +1,4 @@
-package publishers
+package publisher
 
 import (
 	"context"
@@ -158,7 +158,7 @@ func (p *P) PublishFirmware(ctx context.Context, firmware asyncapi.FirmwareSchem
 	return nil
 }
 
-func (p *P) Publishnotification(ctx context.Context, n asyncapi.NotificationSchema) error {
+func (p *P) PublishNotification(ctx context.Context, n asyncapi.NotificationSchema) error {
 	header, err := p.auth.GetAuthHeader(ctx)
 	if err != nil {
 		return fmt.Errorf("unauthenticated: get auth header: %w", err)

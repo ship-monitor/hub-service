@@ -7,7 +7,7 @@ import (
 	"github.com/ship-monitor/cloud/pkg/connector/asyncapi"
 	"github.com/ship-monitor/cloud/pkg/connector/common"
 	"github.com/ship-monitor/hub-service/internal/config"
-	"github.com/ship-monitor/hub-service/internal/publishers"
+	"github.com/ship-monitor/hub-service/internal/publisher"
 	"github.com/ship-monitor/hub-service/internal/repositories/sensor"
 	"github.com/ship-monitor/hub-service/internal/services/auth"
 	"github.com/ship-monitor/hub-service/internal/services/info"
@@ -64,15 +64,15 @@ func newPub(
 	conn *asyncapi.UserController,
 	info *info.Service,
 	auth *auth.Service,
-) (*publishers.P, error) {
-	return publishers.New(conn, logger, info, auth), nil
+) (*publisher.P, error) {
+	return publisher.New(conn, logger, info, auth), nil
 }
 func newSub(
 	lc fx.Lifecycle,
 	controller *asyncapi.UserController,
 	info *info.Service,
 	logger *zap.Logger,
-	pub *publishers.P,
+	pub *publisher.P,
 	firmware *device.Worker,
 ) (*subscriber.S, error) {
 	s := subscriber.New(controller, info, logger, pub, firmware)
