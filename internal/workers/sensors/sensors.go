@@ -7,7 +7,6 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/ship-monitor/cloud/pkg/connector/asyncapi"
 	"github.com/ship-monitor/hub-service/internal/types"
 	"github.com/ship-monitor/hub-service/pkg/metrics"
@@ -20,6 +19,7 @@ type Repo interface {
 
 type Pub interface {
 	PublishSensorMetrics(ctx context.Context, metrics asyncapi.SensorMetricsMessagePayload) error
+	PublishSensorDeclaration(ctx context.Context, declaration asyncapi.SensorDeclarationSchema) error
 }
 
 // SendMetricsTimeout represents timeout between sending metrics.
@@ -27,33 +27,23 @@ const SendMetricsTimeout = time.Second * 30
 
 const SendDeclarationTimeout = time.Minute * 2
 
-type DeviceInfoService interface {
-	ID() uuid.UUID
-}
-
 type Worker struct {
-	controller *asyncapi.UserController
-	logger     *zap.Logger
-	info       DeviceInfoService
-	pub        Pub
-	repo       Repo
-	stop       chan struct{}
+	logger *zap.Logger
+	pub    Pub
+	repo   Repo
+	stop   chan struct{}
 }
 
 func New(
-	controller *asyncapi.UserController,
 	logger *zap.Logger,
-	info DeviceInfoService,
 	pub Pub,
 	repo Repo,
 ) *Worker {
 	return &Worker{
-		controller: controller,
-		logger:     logger.Named("Sensors"),
-		info:       info,
-		pub:        pub,
-		repo:       repo,
-		stop:       make(chan struct{}),
+		logger: logger.Named("Sensors"),
+		pub:    pub,
+		repo:   repo,
+		stop:   make(chan struct{}),
 	}
 }
 
@@ -74,19 +64,9 @@ func (w *Worker) declare(ctx context.Context) error {
 		return fmt.Errorf("get sensors: %w", err)
 	}
 
-	err = w.controller.SendToSensorDeclarationOperation(
+	err = w.pub.PublishSensorDeclaration(
 		ctx,
-		asyncapi.SensorDeclarationsChannelParameters{
-			DeviceId: w.info.ID().String(),
-		},
-		asyncapi.SensorDeclarationMessage{
-			Headers: asyncapi.IdentificationHeadersSchema{
-				Authorization: w.info.ID().String(),
-			},
-			Payload: asyncapi.SensorDeclarationSchema{
-				Sensors: mapSensors(s),
-			},
-		},
+		asyncapi.SensorDeclarationSchema{Sensors: mapSensors(s)},
 	)
 	if err != nil {
 		return fmt.Errorf("send declaration: %w", err)

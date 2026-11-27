@@ -182,3 +182,25 @@ func (p *P) PublishNotification(ctx context.Context, n asyncapi.NotificationSche
 
 	return nil
 }
+func (p *P) PublishSensorDeclaration(ctx context.Context, declaration asyncapi.SensorDeclarationSchema) error {
+	header, err := p.auth.GetAuthHeader(ctx)
+	if err != nil {
+		return fmt.Errorf("unauthenticated: get auth header: %w", err)
+	}
+
+	err = p.controller.SendToSensorDeclarationOperation(ctx, asyncapi.SensorDeclarationsChannelParameters{
+		DeviceId: p.info.ID().String(),
+	},
+		asyncapi.SensorDeclarationMessage{
+			Headers: asyncapi.IdentificationHeadersSchema{
+				Authorization: header,
+			},
+			Payload: declaration,
+		},
+	)
+	if err != nil {
+		return fmt.Errorf("send declaration: %w", err)
+	}
+
+	return nil
+}

@@ -1,7 +1,6 @@
 package di
 
 import (
-	"github.com/ship-monitor/cloud/pkg/connector/asyncapi"
 	"github.com/ship-monitor/hub-service/internal/config"
 	"github.com/ship-monitor/hub-service/internal/publisher"
 	"github.com/ship-monitor/hub-service/internal/repositories/sensor"
@@ -27,14 +26,12 @@ func newDeviceWorker(
 
 func newSensorsWorker(
 	lc fx.Lifecycle,
-	conn *asyncapi.UserController,
 	logger *zap.Logger,
-	info *info.Service,
 	config *config.Config,
 	pub *publisher.P,
 	repo *sensor.Repo,
 ) (*sensors.Worker, error) {
-	w := sensors.New(conn, logger.Named("Workers"), info, pub, repo)
+	w := sensors.New(logger.Named("Workers"), pub, repo)
 
 	lc.Append(fx.StartStopHook(w.Start, w.Stop))
 
