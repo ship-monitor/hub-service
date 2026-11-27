@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/ship-monitor/cloud/pkg/connector/asyncapi"
+	"github.com/ship-monitor/hub-service/internal/config"
 	"go.uber.org/zap"
 )
 
@@ -29,6 +30,7 @@ type Worker struct {
 	metric    MetricsPub
 	firmware  FirmwarePub
 	info      Info
+	config    *config.Config
 	stop      chan struct{}
 }
 
@@ -38,6 +40,7 @@ func New(
 	metric MetricsPub,
 	firmware FirmwarePub,
 	info Info,
+	config *config.Config,
 ) *Worker {
 	return &Worker{
 		logger:    logger.Named("Device"),
@@ -45,6 +48,7 @@ func New(
 		metric:    metric,
 		firmware:  firmware,
 		info:      info,
+		config:    config,
 		stop:      make(chan struct{}),
 	}
 }
@@ -52,12 +56,9 @@ func New(
 func (w *Worker) Start() {
 	go w.startPublishingHeartbeat()
 	go w.startPublishingMetrics()
-	go w.startPublishingFirmware()
 }
 
 func (w *Worker) Stop() {
-	w.stop <- struct{}{}
-
 	w.stop <- struct{}{}
 
 	w.stop <- struct{}{}

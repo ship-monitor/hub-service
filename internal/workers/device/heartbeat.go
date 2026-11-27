@@ -9,11 +9,8 @@ import (
 	"go.uber.org/zap"
 )
 
-// SendHeartbeatTimeout represents timeout between sending heartbeats.
-const SendHeartbeatTimeout = time.Second * 20
-
 func (w *Worker) startPublishingHeartbeat() {
-	ticker := time.NewTicker(SendHeartbeatTimeout)
+	ticker := time.NewTicker(w.config.SendHeartbeatTimeout)
 	defer ticker.Stop()
 
 	for {

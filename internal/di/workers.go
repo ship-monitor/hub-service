@@ -1,6 +1,9 @@
 package di
 
 import (
+	"context"
+	"fmt"
+
 	"github.com/ship-monitor/hub-service/internal/config"
 	"github.com/ship-monitor/hub-service/internal/publisher"
 	"github.com/ship-monitor/hub-service/internal/repositories/sensor"
@@ -16,10 +19,23 @@ func newDeviceWorker(
 	logger *zap.Logger,
 	pub *publisher.P,
 	info *info.Service,
+	config *config.Config,
 ) *device.Worker {
-	worker := device.New(logger.Named("Workers"), pub, pub, pub, info)
+	worker := device.New(logger.Named("Workers"), pub, pub, pub, info, config)
 
-	lc.Append(fx.StartStopHook(worker.Start, worker.Stop))
+	lc.Append(fx.StartStopHook(
+		func(ctx context.Context) error {
+			worker.Start() //nolint:contextcheck
+
+			err := worker.PublishFirmware(ctx)
+			if err != nil {
+				return fmt.Errorf("publish firmware: %w", err)
+			}
+
+			return nil
+		},
+		worker.Stop,
+	))
 
 	return worker
 }
@@ -31,9 +47,16 @@ func newSensorsWorker(
 	pub *publisher.P,
 	repo *sensor.Repo,
 ) (*sensors.Worker, error) {
-	w := sensors.New(logger.Named("Workers"), pub, repo)
+	w := sensors.New(logger.Named("Workers"), pub, repo, config)
 
-	lc.Append(fx.StartStopHook(w.Start, w.Stop))
+	lc.Append(fx.StartStopHook(
+		func() {
+			w.Start()
+		},
+		func() {
+			w.Stop()
+		},
+	))
 
 	return w, nil
 }

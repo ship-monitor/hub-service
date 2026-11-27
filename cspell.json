@@ -1,3 +1,9 @@
 {
-  "words": ["nolint", "asyncapi", "coldstat", "gochecknoglobals"]
+  "words": [
+    "nolint",
+    "asyncapi",
+    "coldstat",
+    "gochecknoglobals",
+    "contextcheck"
+  ]
 }

@@ -182,6 +182,7 @@ func (p *P) PublishNotification(ctx context.Context, n asyncapi.NotificationSche
 
 	return nil
 }
+
 func (p *P) PublishSensorDeclaration(ctx context.Context, declaration asyncapi.SensorDeclarationSchema) error {
 	header, err := p.auth.GetAuthHeader(ctx)
 	if err != nil {

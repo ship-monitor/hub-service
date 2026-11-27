@@ -10,10 +10,8 @@ import (
 	"go.uber.org/zap"
 )
 
-const SendMetricsTimeout = time.Second * 10
-
 func (w *Worker) startPublishingMetrics() {
-	ticker := time.NewTicker(SendMetricsTimeout)
+	ticker := time.NewTicker(w.config.SendMetricsTimeout)
 	defer ticker.Stop()
 
 	for {
